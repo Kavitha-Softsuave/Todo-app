@@ -1,0 +1,135 @@
+# Reverse Mortgage Calculator - WordPress Deployment Package
+Date: February 13, 2025
+
+## Table of Contents
+1. Overview
+2. Integration Steps
+3. Complete Component Code
+4. Database Setup
+5. Security Considerations
+
+## 1. Overview
+This package contains everything needed to integrate the Reverse Mortgage Calculator into your WordPress website with MongoDB database support.
+
+## 2. Integration Steps
+
+### Required NPM Packages
+```bash
+npm install @radix-ui/react-separator @radix-ui/react-tooltip react-hook-form @hookform/resolvers/zod zod @tanstack/react-query lucide-react tailwindcss class-variance-authority clsx tailwind-merge mongodb mongoose
+```
+
+### WordPress Plugin Setup
+1. Create plugin directory: `wp-content/plugins/rm-calculator`
+2. Create main plugin file `rm-calculator.php`:
+
+```php
+<?php
+/*
+Plugin Name: Reverse Mortgage Calculator
+Description: React-based Reverse Mortgage Calculator
+Version: 1.0
+*/
+
+function enqueue_rm_calculator_scripts() {
+    wp_enqueue_script('rm-calculator', plugin_dir_url(__FILE__) . 'build/static/js/main.js', array(), '1.0', true);
+    wp_enqueue_style('rm-calculator-styles', plugin_dir_url(__FILE__) . 'build/static/css/main.css');
+}
+add_action('wp_enqueue_scripts', 'enqueue_rm_calculator_scripts');
+
+function rm_calculator_shortcode() {
+    return '<div id="rm-calculator-root"></div>';
+}
+add_shortcode('rm_calculator', 'rm_calculator_shortcode');
+
+// API Endpoint Setup
+add_action('rest_api_init', function () {
+    register_rest_route('rm-calculator/v1', '/calculator-usage', array(
+        'methods' => 'POST',
+        'callback' => 'handle_calculator_usage',
+        'permission_callback' => '__return_true'
+    ));
+});
+
+function handle_calculator_usage($request) {
+    $params = $request->get_params();
+    
+    // MongoDB connection
+    $mongodb_uri = getenv('MONGODB_URI');
+    $client = new MongoDB\Client($mongodb_uri);
+    $collection = $client->your_database->calculator_usage;
+    
+    // Save calculation data
+    $result = $collection->insertOne($params);
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'id' => (string)$result->getInsertedId()
+    ), 200);
+}
+```
+
+### MongoDB Setup
+1. Create MongoDB Schema (save as `models/CalculatorUsage.js`):
+
+```javascript
+const mongoose = require('mongoose');
+
+const calculatorUsageSchema = new mongoose.Schema({
+    userId: String,
+    propertyValue: Number,
+    appreciationRate: Number,
+    requiredMonthlyAmount: Number,
+    payoutAdjustmentType: String,
+    annualIncreaseRate: Number,
+    blockPeriod: Number,
+    calculationResult: Object,
+    createdAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('CalculatorUsage', calculatorUsageSchema);
+```
+
+## 3. Complete Component Code
+Here's the complete React component code (save as `MortgageCalculator.tsx`):
+
+```typescript
+${open_files["client/src/components/mortgage-calculator.tsx"]}
+```
+
+## 4. Database Setup
+1. Install MongoDB PHP driver:
+```bash
+pecl install mongodb
+```
+
+2. Add MongoDB connection to WordPress (in wp-config.php):
+```php
+define('MONGODB_URI', 'your_mongodb_connection_string');
+```
+
+## 5. Security Considerations
+1. Implement proper input validation
+2. Secure MongoDB connection string
+3. Add WordPress nonce verification
+4. Implement rate limiting
+5. Sanitize all user inputs
+
+## Deployment Steps
+1. Copy all files to their respective locations in your WordPress installation
+2. Install required NPM packages
+3. Build the React application
+4. Activate the plugin in WordPress admin panel
+5. Add the shortcode `[rm_calculator]` to any page where you want the calculator to appear
+
+## Testing
+1. Verify the calculator appears on pages with the shortcode
+2. Test calculation functionality
+3. Verify data is being saved to MongoDB
+4. Check mobile responsiveness
+
+## Support
+For technical support or questions during implementation, please contact your development team or WordPress administrator.
+
+---
+Note: Replace 'your_mongodb_connection_string' with your actual MongoDB connection string.
+Make sure to secure all sensitive information and follow WordPress security best practices.
